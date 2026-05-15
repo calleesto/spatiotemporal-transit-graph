@@ -110,6 +110,7 @@ def calc_avg_transit_time(nodes_dict: dict[str, TransitStop]):
             if edge.schedules:
                 total_duration = sum(trip['duration'] for trip in edge.schedules)
                 edge.avg_weight = total_duration / len(edge.schedules)
+                edge.avg_weight = total_duration / len(edge.schedules)
             else:
                 edge.avg_weight = edge.weight
 

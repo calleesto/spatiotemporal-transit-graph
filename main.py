@@ -45,6 +45,19 @@ app.layout = html.Div(
             ]
         ),
         html.Div(
+            style={
+                'display': 'flex', 'justifyContent': 'center', 'gap': '30px',
+                'padding': '8px', 'backgroundColor': '#070707', 'borderBottom': '1px solid #111',
+                'color': '#888', 'fontFamily': 'monospace', 'fontSize': '13px'
+            },
+            children=[
+                html.Span([html.Span("■", style={'color': '#00ff44', 'textShadow': '0 0 8px #00ff44'}), " Faster than scheduled"]),
+                html.Span([html.Span("■", style={'color': '#00aaff', 'textShadow': '0 0 8px #00aaff'}), " On schedule"]),
+                html.Span([html.Span("■", style={'color': '#ff0033', 'textShadow': '0 0 8px #ff0033'}), " Heavy delays"]),
+                html.Span([html.Span("■", style={'color': '#333333'}), " No service"]),
+            ]
+        ),
+        html.Div(
             style={'flex': '1'},
             children=[
                 dcc.Graph(

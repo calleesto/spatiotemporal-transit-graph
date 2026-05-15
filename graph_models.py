@@ -22,3 +22,4 @@ class TransitConnection(Edge):
         self.trip_id = trip_id
         self.route_type = route_type
         self.schedules = []
+        self.avg_weight = 0

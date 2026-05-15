@@ -3,91 +3,133 @@ import plotly.graph_objects as go
 from graph_models import TransitStop
 
 THRESHOLD = 0.05
+TIME_WINDOW = 1800 # 30 min
 
-def draw_graph(graph_nodes: dict[str, TransitStop], selected_time_sec: int = None):
-    start_time = time.perf_counter()
 
-    # 4 buckets for each type of coloring
-    green_x, green_y = [], []  # faster than average
-    red_x, red_y = [], []  # slower than average
-    orange_x, orange_y = [], []  # average time
-    grey_x, grey_y = [], []  # no busses
+def _get_mean_time_in_window(edge, selected_time_sec: int, time_window: int):
+    if selected_time_sec is None:
+        return None
 
-    time_window = 1800  #  1800s = 30min
-    drawn_streets = set()
+    valid_trips = [t for t in edge.schedules if abs(t['departure'] - selected_time_sec) <= time_window]
+    if not valid_trips:
+        return None
 
-    for node_id, node in graph_nodes.items():
-        for edge in node.edges.values():
-            a = edge.source
-            b = edge.target
-            street_id = f"{a.id}-{b.id}"
+    # Return mean duration of all trips in the time window
+    return sum(t['duration'] for t in valid_trips) / len(valid_trips)
 
-            if street_id not in drawn_streets:
-                drawn_streets.add(street_id)
 
-                coords_x = [a.lon, b.lon, None]
-                coords_y = [a.lat, b.lat, None]
-
-                if selected_time_sec is None:
-                    grey_x.extend(coords_x)
-                    grey_y.extend(coords_y)
-                    continue
-
-                valid_trips = [
-                    t for t in edge.schedules
-                    if abs(t['departure'] - selected_time_sec) <= time_window
-                ]
-
-                if not valid_trips:
-                    grey_x.extend(coords_x)
-                    grey_y.extend(coords_y)
-                else:
-                    current_duration = sum(t['duration'] for t in valid_trips) / len(valid_trips)
-
-                    threshold = THRESHOLD
-
-                    if current_duration < edge.avg_weight * (1 - threshold):
-                        green_x.extend(coords_x)
-                        green_y.extend(coords_y)
-                    elif current_duration > edge.avg_weight * (1 + threshold):
-                        red_x.extend(coords_x)
-                        red_y.extend(coords_y)
-                    else:
-                        orange_x.extend(coords_x)
-                        orange_y.extend(coords_y)
-
-    node_x, node_y, node_text = [], [], []
+def _extract_nodes(graph_nodes: dict[str, TransitStop]):
+    x, y, text = [], [], []
     for node in graph_nodes.values():
-        node_x.append(node.lon)
-        node_y.append(node.lat)
-        node_text.append(node.name)
+        x.append(node.lon)
+        y.append(node.lat)
+        text.append(node.name)
+    return x, y, text
 
+
+def _lib_draw(grey_x, grey_y, green_x, green_y, blue_x, blue_y, red_x, red_y, hover_x, hover_y, hover_text, node_x,
+              node_y, node_text):
     fig = go.Figure()
 
+    # no service edge color
     fig.add_trace(go.Scatter(x=grey_x, y=grey_y, line=dict(width=0.5, color='#333333'), mode='lines', hoverinfo='none'))
+
+    # faster than scheduled edge color
     fig.add_trace(
-        go.Scatter(x=green_x, y=green_y, line=dict(width=1.5, color='#00ff44'), mode='lines', hoverinfo='none'))
-    fig.add_trace(
-        go.Scatter(x=orange_x, y=orange_y, line=dict(width=1.5, color='#ffa500'), mode='lines', hoverinfo='none'))
+        go.Scatter(x=green_x, y=green_y, line=dict(width=2.0, color='#00ff44'), mode='lines', hoverinfo='none'))
+
+    # on schedule edge color
+    fig.add_trace(go.Scatter(x=blue_x, y=blue_y, line=dict(width=0.5, color='#00aaff'), mode='lines', hoverinfo='none'))
+
+    # heavy delays edge color
     fig.add_trace(go.Scatter(x=red_x, y=red_y, line=dict(width=2.5, color='#ff0033'), mode='lines', hoverinfo='none'))
 
-    # Rysowanie węzłów na wierzchu
+    # invisible markers at edge midpoints for hover detection
+    fig.add_trace(go.Scatter(
+        x=hover_x, y=hover_y, mode='markers', hoverinfo='text', text=hover_text,
+        marker=dict(size=7, color='rgba(0,0,0,0)'),
+        hoverlabel=dict(bgcolor='#111111', font=dict(color='#00ffcc'), bordercolor='#333333')
+    ))
+
     fig.add_trace(go.Scatter(
         x=node_x, y=node_y, mode='markers', hoverinfo='text', text=node_text,
         marker=dict(color='#00ffcc', size=3, line_width=0)
     ))
 
     fig.update_layout(
-        showlegend=False,
-        hovermode='closest',
-        margin=dict(b=0, l=0, r=0, t=0),
-        plot_bgcolor='#050505',
-        paper_bgcolor='#050505',
+        showlegend=False, hovermode='closest', margin=dict(b=0, l=0, r=0, t=0),
+        plot_bgcolor='#050505', paper_bgcolor='#050505',
         xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
         yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)
+    )
+    return fig
+
+
+def draw_graph(graph_nodes: dict[str, TransitStop], selected_time_sec: int = None):
+    start_time = time.perf_counter()  # function timer
+
+    # lists for sorting edge coordinates by color
+    green_x, green_y = [], []
+    red_x, red_y = [], []
+    blue_x, blue_y = [], []
+    grey_x, grey_y = [], []
+
+    hover_x, hover_y, hover_text = [], [], []
+
+    # tracking drawn streets to not duplicate
+    drawn_streets = set()
+
+    for node in graph_nodes.values():
+        for edge in node.edges.values():
+            a, b = edge.source, edge.target
+            street_id = f"{a.id}-{b.id}"
+
+            if street_id in drawn_streets:
+                continue
+            drawn_streets.add(street_id)
+
+            # none creates segments to tell plotly to lift the pen
+            coords_x = [a.lon, b.lon, None]
+            coords_y = [a.lat, b.lat, None]
+            # midpoint for hover marker
+            mid_x, mid_y = (a.lon + b.lon) / 2, (a.lat + b.lat) / 2
+
+            avg_val = edge.avg_weight
+            base_popup = f"<b>{a.name} ➔ {b.name}</b><br>Avg time: {avg_val:.0f}s"
+
+            current_duration = _get_mean_time_in_window(edge, selected_time_sec, TIME_WINDOW)
+
+            if current_duration is None:
+                grey_x.extend(coords_x)
+                grey_y.extend(coords_y)
+
+                hover_x.append(mid_x)
+                hover_y.append(mid_y)
+                status = "No active trips" if selected_time_sec else "N/A"
+                hover_text.append(f"{base_popup}<br>Current time: {status}")
+            else:
+                if current_duration < avg_val * (1 - THRESHOLD):
+                    green_x.extend(coords_x)
+                    green_y.extend(coords_y)
+                elif current_duration > avg_val * (1 + THRESHOLD):
+                    red_x.extend(coords_x)
+                    red_y.extend(coords_y)
+                else:
+                    blue_x.extend(coords_x)
+                    blue_y.extend(coords_y)
+
+                hover_x.append(mid_x)
+                hover_y.append(mid_y)
+                hover_text.append(f"{base_popup}<br>Current time: {current_duration:.0f}s")
+
+    node_x, node_y, node_text = _extract_nodes(graph_nodes)
+
+    graph = _lib_draw(
+        grey_x, grey_y, green_x, green_y, blue_x, blue_y, red_x, red_y,
+        hover_x, hover_y, hover_text, node_x, node_y, node_text
     )
 
     end_time = time.perf_counter()
     print(f"draw_graph took {end_time - start_time:.4f}s to finish")
 
-    return fig
+    return graph
