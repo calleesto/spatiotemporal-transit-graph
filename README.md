@@ -1,6 +1,6 @@
 # NeptuNet: GTFS to Graph Converter & Traffic Digital Twin
 
-![Screenshot](assets/screenshot.png)
+![Screenshot](/assets/screenshot.png)
 
 ## Overview
 This project processes raw General Transit Feed Specification (GTFS) data from the ZTM Gdańsk API and transforms it into a fully functional, Time-Dependent directed graph structure. 
