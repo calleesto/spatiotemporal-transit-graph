@@ -1,7 +1,6 @@
 # NeptuNet: GTFS to Graph Converter & Traffic Digital Twin
 
-![NeptuNet Dashboard Placeholder](docs/images/dashboard_main.png)
-*(Screenshot of the main dashboard with the neon/cyberpunk UI and the time slider)*
+![Screenshot](assets/screenshot.png)
 
 ## Overview
 This project processes raw General Transit Feed Specification (GTFS) data from the ZTM Gdańsk API and transforms it into a fully functional, Time-Dependent directed graph structure. 
@@ -35,9 +34,6 @@ Parsing raw GTFS `.txt` files is CPU-intensive. To improve Developer Experience 
 
 ## Interactive Dashboard & Traffic Visualization
 
-![Traffic Heatmap Placeholder](docs/images/traffic_heatmap.png)
-*(Screenshot highlighting a specific area with red and green routes)*
-
 The project includes a high-performance rendering engine built with **Plotly** and served via a **Dash** web application. It acts as a real-time temporal map of the city's transit flow.
 
 ### Features
@@ -48,9 +44,6 @@ The project includes a high-performance rendering engine built with **Plotly** a
   * **Red (Heavy Delays):** Significant schedule delays/traffic congestion detected.
   * **Dark Grey (No Service):** The street is "asleep" with no active routes in the selected time window.
 * **Interactive Tooltips:** Hovering over any active street segment reveals a hidden marker that displays the exact street name, the average historical travel time, and the current dynamic travel time.
-
-![Hover Tooltip Placeholder](docs/images/hover_tooltip.png)
-*(Screenshot showing the hover popup over a specific edge)*
 
 ## Setup & Usage
 
