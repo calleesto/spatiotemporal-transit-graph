@@ -39,10 +39,16 @@ def load_nodes(nodes_dict: dict[str, TransitStop]) -> int:
     print(f"load_nodes took {execution_time:.4f} seconds to finish.")
     return count
 
-def gtfs_time_to_seconds(time_str: str) -> int:
-    """converts GTFS time (hh:mm:ss) to total seconds since midnight"""
+def gtfs_converter(time_str: str) -> int:
+    """converts GTFS time (hh:mm:ss) to total seconds — extended hours unchanged"""
     h, m, s = map(int, str(time_str).split(':'))
-    if h >= 24: # normalizing hours to be within 0-23
+    return h * 3600 + m * 60 + s
+
+
+def gtfs_converter_w_normalization(time_str: str) -> int:
+    """converts GTFS time to seconds on a 0–23h clock (25:00 → 01:00)"""
+    h, m, s = map(int, str(time_str).split(':'))
+    if h >= 24:
         h = h % 24
     return h * 3600 + m * 60 + s
 
@@ -68,9 +74,8 @@ def load_edges(nodes_dict: dict[str, TransitStop]) -> int:
             node_b_id = str(stop_b_data['stop_id'])
 
             if node_a_id in nodes_dict and node_b_id in nodes_dict:
-                dep_time = gtfs_time_to_seconds(stop_a_data['departure_time'])
-                arr_time = gtfs_time_to_seconds(stop_b_data['arrival_time'])
-                weight = arr_time - dep_time
+                dep_time = gtfs_converter_w_normalization(stop_a_data['departure_time'])
+                weight = gtfs_converter(stop_b_data['arrival_time']) - gtfs_converter(stop_a_data['departure_time'])
 
                 trip_info = {
                     'departure': dep_time,
@@ -111,7 +116,6 @@ def calc_avg_transit_time(nodes_dict: dict[str, TransitStop]):
         for edge in node.edges.values():
             if edge.schedules:
                 total_duration = sum(trip['duration'] for trip in edge.schedules)
-                edge.avg_weight = total_duration / len(edge.schedules)
                 edge.avg_weight = total_duration / len(edge.schedules)
             else:
                 edge.avg_weight = edge.weight
