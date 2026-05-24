@@ -42,6 +42,8 @@ def load_nodes(nodes_dict: dict[str, TransitStop]) -> int:
 def gtfs_time_to_seconds(time_str: str) -> int:
     """converts GTFS time (hh:mm:ss) to total seconds since midnight"""
     h, m, s = map(int, str(time_str).split(':'))
+    if h >= 24: # normalizing hours to be within 0-23
+        h = h % 24
     return h * 3600 + m * 60 + s
 
 
