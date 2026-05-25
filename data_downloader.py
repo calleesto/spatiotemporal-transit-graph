@@ -23,11 +23,8 @@ def fetch_latest_gtfs():
 
         print(f"extract successful - files located in \033[1m{GTFS_FOLDER}\033[0m")
 
-        from graph_builder import build_cache # import here to avoid circular imports
-        build_cache()
-
-
     except requests.exceptions.RequestException as e:
         print(f"error: {e}")
 
-fetch_latest_gtfs()
+if __name__ == '__main__':
+    fetch_latest_gtfs()
